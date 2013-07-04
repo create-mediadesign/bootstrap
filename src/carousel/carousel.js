@@ -181,15 +181,16 @@ angular.module('ui.bootstrap.carousel', ['ui.bootstrap.transition'])
 
   self.removeSlide = function(slide) {
     //get the index of the slide inside the carousel
-    var index = getIndexOf(slide);
+    var actualIndex = getIndexOf(slide);
+    var index = slides.indexOf(slide);
     slides.splice(index, 1);
     if (slides.length > 0 && slide.active) {
-      if (index >= slides.length) {
-        self.select(slides[index-1]);
+      if (actualIndex >= slides.length) {
+        self.select(slides[actualIndex-1]);
       } else {
-        self.select(slides[index]);
+        self.select(slides[actualIndex]);
       }
-    } else if (currentIndex > index) {
+    } else if (currentIndex > actualIndex) {
       currentIndex--;
     }
   };
