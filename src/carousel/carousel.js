@@ -16,7 +16,7 @@ angular.module('ui.bootstrap.carousel', ['ui.bootstrap.transition'])
 
   /* direction: "prev" or "next" */
   self.select = function(nextSlide, direction) {
-    var nextIndex = slides.indexOf(nextSlide);
+    var nextIndex = getIndexOf(nextSlide);
     //Decide direction if it's not given
     if (direction === undefined) {
       direction = nextIndex > currentIndex ? "next" : "prev";
@@ -67,26 +67,56 @@ angular.module('ui.bootstrap.carousel', ['ui.bootstrap.transition'])
     }
   };
 
+  /**
+   * DOM-aware index of slides
+   * Those assumptions must apply, to make it work:
+   *  - slides are hosted inside one parent (no other DOM-element should exist inside this) 
+   */
+  var getIndexOf = function(slide) {
+    var child = slide.$element.context;
+    var index = 0;
+    while ((child = child.previousSibling) !== null) {
+        if (child.nodeType === 1) {
+          index -= -1;
+        }
+      }
+    return index;
+  };
+
+  var slideAtIndex = function(index) {
+    var slide = null;
+    for (var i=0; i<slides.length; i++) {
+      if (getIndexOf(slides[i]) === index) {
+        slide = slides[i];
+      }
+    }
+    return slide;
+  };
+
   /* Allow outside people to call indexOf on slides array */
   self.indexOfSlide = function(slide) {
-    return slides.indexOf(slide);
+    return getIndexOf(slide);
   };
 
   $scope.next = function() {
-    var newIndex = (currentIndex + 1) % slides.length;
+    var curIndex = getIndexOf(self.currentSlide);
+    var newIndex = (curIndex + 1) % slides.length;
+    var slide    = slideAtIndex(newIndex);
     
     //Prevent this user-triggered transition from occurring if there is already one in progress
     if (!$scope.$currentTransition) {
-      return self.select(slides[newIndex], 'next');
+      return self.select(slide, 'next');
     }
   };
 
   $scope.prev = function() {
-    var newIndex = currentIndex - 1 < 0 ? slides.length - 1 : currentIndex - 1;
+    var curIndex = getIndexOf(self.currentSlide);
+    var newIndex = curIndex - 1 < 0 ? slides.length - 1 : curIndex - 1;
+    var slide    = slideAtIndex(newIndex);
     
     //Prevent this user-triggered transition from occurring if there is already one in progress
     if (!$scope.$currentTransition) {
-      return self.select(slides[newIndex], 'prev');
+      return self.select(slide, 'prev');
     }
   };
 
@@ -151,7 +181,7 @@ angular.module('ui.bootstrap.carousel', ['ui.bootstrap.transition'])
 
   self.removeSlide = function(slide) {
     //get the index of the slide inside the carousel
-    var index = slides.indexOf(slide);
+    var index = getIndexOf(slide);
     slides.splice(index, 1);
     if (slides.length > 0 && slide.active) {
       if (index >= slides.length) {
