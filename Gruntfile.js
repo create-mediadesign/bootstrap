@@ -130,7 +130,7 @@ module.exports = function(grunt) {
         singleRun: true,
         colors: false,
         reporter: ['dots', 'junit'],
-        browsers: ['Chrome', 'ChromeCanary', 'Firefox', 'Opera', '/Users/jenkins/bin/safari.sh', '/Users/jenkins/bin/ie9.sh' ,'/Users/jenkins/bin/ie10.sh']
+        browsers: ['Chrome', 'ChromeCanary', 'Firefox', 'Opera', '/Users/jenkins/bin/safari.sh', '/Users/jenkins/bin/ie9.sh']
       },
       travis: {
         singleRun: true,
@@ -293,9 +293,16 @@ module.exports = function(grunt) {
     var modules = grunt.config('modules');
     grunt.config('srcModules', _.pluck(modules, 'moduleName'));
     grunt.config('tplModules', _.pluck(modules, 'tplModules').filter(function(tpls) { return tpls.length > 0;} ));
-    grunt.config('demoModules', modules.filter(function(module) {
-      return module.docs.md && module.docs.js && module.docs.html;
-    }));
+    grunt.config('demoModules', modules
+      .filter(function(module) {
+        return module.docs.md && module.docs.js && module.docs.html;
+      })
+      .sort(function(a, b) {
+        if (a.name < b.name) { return -1; }
+        if (a.name > b.name) { return 1; }
+        return 0;
+      })
+    );
 
     var srcFiles = _.pluck(modules, 'srcFiles');
     var tpljsFiles = _.pluck(modules, 'tpljsFiles');
