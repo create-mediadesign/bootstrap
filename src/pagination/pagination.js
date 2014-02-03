@@ -1,9 +1,17 @@
 angular.module('ui.bootstrap.pagination', [])
 
 .controller('PaginationController', ['$scope', '$attrs', '$parse', '$interpolate', function ($scope, $attrs, $parse, $interpolate) {
-  var self = this;
+  var self = this,
+      ngModelCtrl = { $setViewValue: angular.noop }, // nullModelCtrl
+      setNumPages = $attrs.numPages ? $parse($attrs.numPages).assign : angular.noop;
 
-  this.init = function(defaultItemsPerPage) {
+  this.init = function(ngModelCtrl_, defaultItemsPerPage) {
+    ngModelCtrl = ngModelCtrl_;
+
+    ngModelCtrl.$render = function() {
+      self.render();
+    };
+
     if ($attrs.itemsPerPage) {
       $scope.$parent.$watch($parse($attrs.itemsPerPage), function(value) {
         self.itemsPerPage = parseInt(value, 10);
@@ -26,7 +34,8 @@ angular.module('ui.bootstrap.pagination', [])
   };
 
   this.calculateTotalPages = function() {
-    return this.itemsPerPage < 1 ? 1 : Math.ceil($scope.totalItems / this.itemsPerPage);
+    var totalPages = this.itemsPerPage < 1 ? 1 : Math.ceil($scope.totalItems / this.itemsPerPage);
+    return Math.max(totalPages || 0, 1);
   };
 
   this.getAttributeValue = function(attribute, defaultValue, interpolate) {
@@ -34,35 +43,35 @@ angular.module('ui.bootstrap.pagination', [])
   };
 
   this.render = function() {
-    this.page = parseInt($scope.page, 10) || 1;
-    $scope.pages = this.getPages(this.page, $scope.totalPages);
+    this.page = parseInt(ngModelCtrl.$viewValue, 10) || 1;
+    if (this.page > 0 && this.page <= $scope.totalPages) {
+      $scope.pages = this.getPages(this.page, $scope.totalPages);
+    }
   };
 
   $scope.selectPage = function(page) {
     if ( ! self.isActive(page) && page > 0 && page <= $scope.totalPages) {
-      $scope.page = page;
-      $scope.onSelectPage({ page: page });
+      ngModelCtrl.$setViewValue(page);
+      ngModelCtrl.$render();
     }
   };
+
+  $scope.$watch('page', function() {
+    self.render();
+  });
 
   $scope.$watch('totalItems', function() {
     $scope.totalPages = self.calculateTotalPages();
   });
 
   $scope.$watch('totalPages', function(value) {
-    if ( $attrs.numPages ) {
-      $scope.numPages = value; // Readonly variable
-    }
+    setNumPages($scope.$parent, value); // Readonly variable
 
     if ( self.page > value ) {
       $scope.selectPage(value);
     } else {
-      self.render();
+      ngModelCtrl.$render();
     }
-  });
-
-  $scope.$watch('page', function() {
-    self.render();
   });
 }])
 
@@ -81,15 +90,18 @@ angular.module('ui.bootstrap.pagination', [])
   return {
     restrict: 'EA',
     scope: {
-      page: '=',
-      totalItems: '=',
-      onSelectPage:' &',
-      numPages: '='
+      totalItems: '='
     },
+    require: ['pagination', '?ngModel'],
     controller: 'PaginationController',
     templateUrl: 'template/pagination/pagination.html',
     replace: true,
-    link: function(scope, element, attrs, paginationCtrl) {
+    link: function(scope, element, attrs, ctrls) {
+      var paginationCtrl = ctrls[0], ngModel = ctrls[1];
+
+      if (!ngModel) {
+         return; // do nothing if no ng-model
+      }
 
       // Setup configuration parameters
       var maxSize,
@@ -101,7 +113,7 @@ angular.module('ui.bootstrap.pagination', [])
       lastText       = paginationCtrl.getAttributeValue(attrs.lastText,       config.lastText,      true),
       rotate         = paginationCtrl.getAttributeValue(attrs.rotate,         config.rotate);
 
-      paginationCtrl.init(config.itemsPerPage);
+      paginationCtrl.init(ngModel, config.itemsPerPage);
 
       if (attrs.maxSize) {
         scope.$parent.$watch($parse(attrs.maxSize), function(value) {
@@ -202,22 +214,25 @@ angular.module('ui.bootstrap.pagination', [])
   return {
     restrict: 'EA',
     scope: {
-      page: '=',
-      totalItems: '=',
-      onSelectPage:' &',
-      numPages: '='
+      totalItems: '='
     },
+    require: ['pager', '?ngModel'],
     controller: 'PaginationController',
     templateUrl: 'template/pagination/pager.html',
     replace: true,
-    link: function(scope, element, attrs, paginationCtrl) {
+    link: function(scope, element, attrs, ctrls) {
+      var paginationCtrl = ctrls[0], ngModel = ctrls[1];
+
+      if (!ngModel) {
+         return; // do nothing if no ng-model
+      }
 
       // Setup configuration parameters
       var previousText = paginationCtrl.getAttributeValue(attrs.previousText, config.previousText, true),
       nextText         = paginationCtrl.getAttributeValue(attrs.nextText,     config.nextText,     true),
       align            = paginationCtrl.getAttributeValue(attrs.align,        config.align);
 
-      paginationCtrl.init(config.itemsPerPage);
+      paginationCtrl.init(ngModel, config.itemsPerPage);
 
       // Create page object used in template
       function makePage(number, text, isDisabled, isPrevious, isNext) {
